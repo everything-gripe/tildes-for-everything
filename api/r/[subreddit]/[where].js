@@ -1,12 +1,12 @@
 ﻿import {load} from 'cheerio'
 import {NodeHtmlMarkdown} from "node-html-markdown";
-// import {Post} from "everything-sdk";
+import {Everything, Post} from "everything-sdk";
 
 export default async function (request, response)/** @type {Post} */ {
     const tildesResponse = await fetch(`https://tildes.net/${request.query.subreddit}`)
     const $ = load(await tildesResponse.text())
 
-    const topics = await Promise.all($('.topic-listing > li').map(async function(){
+    const topics = await Promise.all($('.topic-listing > li').slice(0, 20).map(async function(){
 
         const topicElm = $('.topic', this)
         const topicTitleElm = $('.topic-title a', this)
@@ -33,15 +33,14 @@ export default async function (request, response)/** @type {Post} */ {
         if (topicElm.hasClass('topic-with-excerpt')) {
             var isSelf = true
             var selftext = NodeHtmlMarkdown.translate(textElm.html())
+            var url = `https://nostr.z.gripe${permalink}`
         } else {
             isSelf = false
             var url = topicTitleElm.attr('href')
             var domain = sourceElm.attr('title')
         }
 
-        return {
-            kind: "t3",
-            data: {
+            return Everything.post(await new Post({
                 id: id,
                 title: title,
                 url: url,
@@ -57,8 +56,7 @@ export default async function (request, response)/** @type {Post} */ {
                 is_self: isSelf,
                 selftext: selftext,
                 domain: domain
-            }
-        }
+            }).buildMetadata())
     }))
 
     const listing = {
