@@ -2,8 +2,8 @@
 import {NodeHtmlMarkdown} from "node-html-markdown";
 import {Everything, Post} from "everything-sdk";
 
-export default async function (request, response)/** @type {Post} */ {
-    const tildesResponse = await fetch(`https://tildes.net/${request.query.subreddit}`)
+export default async function (request, response) {
+    const tildesResponse = await fetch(`https://tildes.net/~${request.query.subreddit}`)
     const $ = load(await tildesResponse.text())
 
     const topics = await Promise.all($('.topic-listing > li').slice(0, 20).map(async function(){
@@ -21,10 +21,12 @@ export default async function (request, response)/** @type {Post} */ {
 
         const id = topicElm.attr('id').replace('topic-', '')
         const title = topicTitleElm.text();
-        const subreddit = topicGroupElm.text() || request.query.subreddit//.replace('~', '')
+        const subreddit = topicGroupElm.text().replace('~', '') || request.query.subreddit
         const subredditNamePrefixed = `r/${subreddit}`
         const numComments =  Number(commentsSpanElm.text().split(' ')[0])
-        const permalink = commentsAElm.attr('href')
+        const linkSegments = commentsAElm.attr('href').split('/')
+        const slug = linkSegments[linkSegments.length - 1]
+        const permalink = `/r/${request.query.subreddit}/comments/${id}/${slug}`
         const author = topicElm.data('topic-posted-by')
         const authorFullname = `t2_${author}`
         const ups = Number(votingElm.text())
@@ -33,30 +35,33 @@ export default async function (request, response)/** @type {Post} */ {
         if (topicElm.hasClass('topic-with-excerpt')) {
             var isSelf = true
             var selftext = NodeHtmlMarkdown.translate(textElm.html())
-            var url = `https://nostr.z.gripe${permalink}`
+            var url = `https://tildes.z.gripe${permalink}`
         } else {
             isSelf = false
             var url = topicTitleElm.attr('href')
             var domain = sourceElm.attr('title')
         }
 
-            return Everything.post(await new Post({
-                id: id,
-                title: title,
-                url: url,
-                subreddit: subreddit,
-                subreddit_name_prefixed: subredditNamePrefixed,
-                num_comments: numComments,
-                permalink: permalink,
-                author: author,
-                author_fullname: authorFullname,
-                ups: ups,
-                score: ups,
-                created_utc: createdUtc,
-                is_self: isSelf,
-                selftext: selftext,
-                domain: domain
-            }).buildMetadata())
+        const post = Everything.post({
+            id: id,
+            title: title,
+            url: url,
+            subreddit: subreddit,
+            subreddit_name_prefixed: subredditNamePrefixed,
+            num_comments: numComments,
+            permalink: permalink,
+            author: author,
+            author_fullname: authorFullname,
+            ups: ups,
+            score: ups,
+            created_utc: createdUtc,
+            is_self: isSelf,
+            selftext: selftext || '',
+            selftext_html: selftext || '',
+            domain: domain || '',
+        })
+        await post.data.buildMetadata()
+        return post
     }))
 
     const listing = {

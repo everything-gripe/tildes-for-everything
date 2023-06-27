@@ -1,6 +1,6 @@
 # Tildes for Everything
 
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE.m)
+[![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE.md)
 
 Tildes for Everything is an implementation of the Everything API guidelines for the Tildes site. It allows you to connect to Tildes through the Everything middleware, providing a unified interface for making requests.
 
